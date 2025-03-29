@@ -113,7 +113,7 @@ python -m src.eclass_mcp_server.server
 Go to Settings -> MCP. Click on `Add new global MCP server`:
 
 This will open the global `mcp.json` file:
-````
+```
 {
     "mcpServers": {
       "server-name": {
