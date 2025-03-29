@@ -1,18 +1,24 @@
 # eClass MCP Server
 
-<p aling="center">
+<p align="center">
     <strong>An MCP server for interacting with Open eClass platform instances, with specific support for UoA's SSO authentication system. </strong>
 </p>
 
+<p align="center">
+    <a href="https://github.com/modelcontextprotocol/python-sdk"><img src="https://img.shields.io/badge/MCP-Protocol-blue" alt="MCP Protocol"></a>
+    <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
+    <img src="https://img.shields.io/badge/Python-3.9%2B-blue" alt="Python: 3.9+">
+    <img src="https://img.shields.io/badge/Status-Development-orange" alt="Status: Development">
+    <a href="https://github.com/gunet/openeclass"><img src="https://img.shields.io/badge/Open-eClass-yellow" alt="Open eClass"></a>
+</p>
 
-<p aling="center">
+<p align="center">
     <img src="assets/example.png" alt="Example Usecase">
 </p>
 
-<p aling="center">
+<p align="center">
     <strong>This server enables AI agents to authenticate with eClass, retrieve course information, and perform basic operations on the platform. </strong>
 </p>
-
 
 ## Features
 
@@ -28,8 +34,14 @@ This project follows a modular architecture for better maintainability:
 ```
 eclass-mcp-server/
 ├── run_server.py               # Entry point script for running the server
+├── eclass_client.py            # Standalone client for eClass (non-MCP)
 ├── pyproject.toml              # Project configuration and dependencies
 ├── .env                        # Environment variables (create from example.env)
+├── docs/                       # Documentation
+│   ├── README.md               # Documentation overview
+│   ├── how-it-works.md         # Core implementation explanation
+│   ├── mcp-sdk-integration.md  # Details on MCP SDK usage
+│   └── tools-reference.md      # Reference for available tools
 ├── src/
     └── eclass_mcp_server/      # Main package
         ├── __init__.py         # Package initialization
@@ -99,7 +111,7 @@ Go to Settings -> MCP. Click on `Add new MCP server`:
 
 This command runs the `run_server.py` script that connects the MCP Client with the main server entry point in `server.py`.
 
-<p aling="center">
+<p align="center">
     <img src="assets/cursor-server.png" alt="Cursor Server Card">
 </p>
 
@@ -158,6 +170,27 @@ Check the current authentication status.
 }
 ```
 
+## eClass Client (Non-MCP)
+
+The repository includes `eclass_client.py`, a standalone client for interacting with the eClass platform. This was the initial implementation that inspired the creation of the MCP server.
+
+### Features of eClass Client
+
+- Pure Python implementation without MCP integration
+- Handles the complete authentication flow with UoA's SSO system
+- Retrieves course information from eClass
+- Provides clean logout functionality
+
+This client serves as both:
+1. A reference implementation for understanding the eClass authentication flow
+2. A simpler alternative for projects that don't require MCP integration
+
+You can run the client directly:
+
+```bash
+python eclass_client.py
+```
+
 ## Testing
 
 The project includes test scripts to verify functionality:
@@ -170,6 +203,15 @@ python -m src.eclass_mcp_server.test.run_all_tests
 python -m src.eclass_mcp_server.test.test_login
 python -m src.eclass_mcp_server.test.test_courses
 ```
+
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+- [Documentation Overview](docs/README.md)
+- [How It Works](docs/how-it-works.md)
+- [MCP SDK Integration](docs/mcp-sdk-integration.md)
+- [Tools Reference](docs/tools-reference.md)
 
 ## Example MCP Client Usage
 
@@ -219,17 +261,49 @@ This MCP server is designed to be used with AI agents that support the Model Con
 - Accessing course materials
 - Submitting assignments (future feature)
 
-## Security Considerations
+## Security
 
-- The server handles sensitive authentication credentials
-- Credentials are only used for authentication and are not stored persistently
-- Session cookies are maintained in memory during the server's lifecycle
-- The server validates session state before performing operations
-- The `.env` file with credentials should never be committed to version control (it's included in .gitignore)
+The eClass MCP Server is designed with security as a top priority, particularly regarding credential handling:
+
+### Local-Only Execution
+
+- **No Cloud Services**: The MCP server runs entirely on your local machine, with no cloud components
+- **No Remote Storage**: Credentials and session data never leave your local environment
+- **User-Controlled**: You maintain complete control over your authentication data
+
+### Credential Protection
+
+- **Environment Variables Only**: Credentials are stored exclusively in the local `.env` file
+- **Never Passed as Parameters**: All tools are designed to use dummy parameters (e.g., `random_string`) 
+- **AI Client Isolation**: AI clients (like Claude or other LLMs) never receive your credentials
+  - This prevents credentials from being:
+    - Stored in AI provider logs
+    - Included in model training data
+    - Processed on remote servers
+
+### Session Management
+
+- **In-Memory Sessions**: Session cookies and state are maintained only in memory
+- **No Persistence**: Session data is not stored between runs
+- **Direct Authentication**: The MCP server communicates directly with eClass, with no intermediaries, apart from your University's CAS mechanism.
+
+### Recommended Practices
+
+- Store your `.env` file securely and never commit it to version control
+- Run the server only on trusted machines
+- Dont pass the parameters to an MCP client through any prompts, they will not be used by the Server and will be accessed by the AI Agent provider
+
 
 ## License
 
 MIT License
+
+## Acknowledgments
+
+- [GUnet (Greek Universities Network)](https://github.com/gunet) for developing and maintaining the [Open eClass platform](https://github.com/gunet/openeclass), an open-source learning management system used by academic institutions throughout Greece.
+- The Open eClass platform is distributed as free Open Source Software under GNU GPL v2.0, making projects like this MCP integration possible.
+- Special thanks to the Asynchronous eLearning Team of GUnet for their continuous development and improvement of the eClass platform.
+- This project is an independent interface to the Open eClass system and is not affiliated with or endorsed by GUnet. It respects the Terms of Service of the eClass platform and uses proper authentication mechanisms.
 
 ## Contributing
 

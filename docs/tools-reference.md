@@ -4,7 +4,7 @@
     <strong>Comprehensive reference for all tools provided by the eClass MCP Server</strong>
 </p>
 
-<p aling="center">
+<p align="center">
     <img src="../assets/guy-not-to-worry-about.png" alt="Meme">
 </p>
 

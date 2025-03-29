@@ -5,7 +5,7 @@
 </p>
 
 
-<p aling="center">
+<p align="center">
     <img src="../assets/cobuter-man.png" alt="Cobuter Man">
 </p>
 
