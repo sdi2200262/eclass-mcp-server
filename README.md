@@ -6,7 +6,7 @@
 
 <p align="center">
     <a href="https://github.com/modelcontextprotocol/python-sdk"><img src="https://img.shields.io/badge/MCP-Protocol-blue" alt="MCP Protocol"></a>
-    <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
+    <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3"></a>
     <img src="https://img.shields.io/badge/Python-3.9%2B-blue" alt="Python: 3.9+">
     <img src="https://img.shields.io/badge/Status-Development-orange" alt="Status: Development">
     <a href="https://github.com/gunet/openeclass"><img src="https://img.shields.io/badge/Open-eClass-yellow" alt="Open eClass"></a>
@@ -293,10 +293,31 @@ The eClass MCP Server is designed with security as a top priority, particularly 
 - Run the server only on trusted machines
 - Dont pass the parameters to an MCP client through any prompts, they will not be used by the Server and will be accessed by the AI Agent provider
 
-
 ## License
 
-MIT License
+### GNU General Public License v3.0
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+#### What this means for you
+
+The GPL-3.0 license is a strong copyleft license that requires anyone who distributes this code or derivative works to make the source code available under the same terms. Key points:
+
+- **Freedom to use**: You can use this software for any purpose
+- **Freedom to study**: You can examine the source code to see how it works
+- **Freedom to share**: You can redistribute the software
+- **Freedom to modify**: You can adapt the software to your needs
+
+#### Why we chose GPL-3.0
+
+We chose the GPL-3.0 license to:
+
+1. **Protect user security**: Ensures that any modifications handling credentials must be open source, allowing users to verify security implementations
+2. **Promote sharing**: Encourages contributions back to the community
+3. **Prevent abuse**: Makes it harder for malicious actors to create closed-source derivatives that might compromise security
+4. **Match ecosystem values**: Aligns with the values of the Open eClass platform, which is also open source
+
+This license is particularly important for this software since it handles authentication and sensitive credentials. The GPL-3.0 ensures that any modifications to this code remain transparent, allowing users to verify how their credentials are being handled.
 
 ## Acknowledgments
 
