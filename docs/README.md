@@ -6,7 +6,7 @@
 
 
 <p aling="center">
-    <img src="assets/cobuter-man.png" alt="Cobuter Man">
+    <img src="../assets/cobuter-man.png" alt="Cobuter Man">
 </p>
 
 <p align="center">

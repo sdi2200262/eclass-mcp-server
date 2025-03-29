@@ -5,7 +5,7 @@
 </p>
 
 <p aling="center">
-    <img src="assets/guy-not-to-worry-about.png" alt="Meme">
+    <img src="../assets/guy-not-to-worry-about.png" alt="Meme">
 </p>
 
 This document provides detailed information about each tool exposed by the eClass MCP Server, including their purpose, parameters, response formats, and example usage.
