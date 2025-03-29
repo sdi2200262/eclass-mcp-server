@@ -109,11 +109,25 @@ python -m src.eclass_mcp_server.server
 ```
 
 ### Cursor
-Go to Settings -> MCP. Click on `Add new MCP server`:
+( as of version 0.48 )
+Go to Settings -> MCP. Click on `Add new global MCP server`:
 
- - Select a unique but appropriate name so that the Agent knows what the server is for (e.g., "eClass Server")
- - Select the `command` option on "Type"
- - Add this in the command input: `python /path/to/eclass-mcp-server/run_server.py`
+This will open the global `mcp.json` file:
+````
+{
+    "mcpServers": {
+      "server-name": {
+        "command": "python",
+        "args": ["absolute\\path\\to\\eclass-mcp-server\\run_server.py"]
+      }
+    }
+}
+```
+
+Or try this path format on the `args` field:
+```
+absolute/path/to/eclass-mcp-server/run_server.py
+```
 
 This command runs the `run_server.py` script that connects the MCP Client with the main server entry point in `server.py`.
 
