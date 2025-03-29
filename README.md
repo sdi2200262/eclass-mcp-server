@@ -1,7 +1,7 @@
 # eClass MCP Server
 
 <p align="center">
-    <strong>An MCP server for interacting with Open eClass platform instances, with specific support for UoA's SSO authentication system. </strong>
+    <strong>An MCP server for interacting with Open eClass platform instances, with specific support for UoA's SSO authentication system.</strong>
 </p>
 
 <p align="center">
@@ -13,11 +13,17 @@
 </p>
 
 <p align="center">
+    <a href="https://glama.ai/mcp/servers/@sdi2200262/eclass-mcp-server">
+      <img width="380" height="200" src="https://glama.ai/mcp/servers/@sdi2200262/eclass-mcp-server/badge" alt="eClass Server MCP server" />
+    </a>
+</p>
+
+<p align="center">
     <img src="assets/example.png" alt="Example Usecase">
 </p>
 
 <p align="center">
-    <strong>This server enables AI agents to authenticate with eClass, retrieve course information, and perform basic operations on the platform. </strong>
+    <strong>This server enables AI agents to authenticate with eClass, retrieve course information, and perform basic operations on the platform.</strong>
 </p>
 
 ## Features
