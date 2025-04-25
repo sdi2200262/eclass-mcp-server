@@ -1,3 +1,5 @@
+[![MseeP Badge](https://mseep.net/pr/sdi2200262-eclass-mcp-server-badge.jpg)](https://mseep.ai/app/sdi2200262-eclass-mcp-server)
+
 # eClass MCP Server
 
 <p align="center">
