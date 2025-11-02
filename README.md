@@ -7,7 +7,7 @@
 <p align="center">
     <a href="https://github.com/modelcontextprotocol/python-sdk"><img src="https://img.shields.io/badge/MCP-Protocol-blue" alt="MCP Protocol"></a>
     <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3"></a>
-    <img src="https://img.shields.io/badge/Python-3.9%2B-blue" alt="Python: 3.9+">
+    <img src="https://img.shields.io/badge/Python-3.10%2B-blue" alt="Python: 3.10+">
     <img src="https://img.shields.io/badge/Status-Development-orange" alt="Status: Development">
     <a href="https://github.com/gunet/openeclass"><img src="https://img.shields.io/badge/Open-eClass-yellow" alt="Open eClass"></a>
 </p>
@@ -64,6 +64,12 @@ eclass-mcp-server/
 
 ## Installation
 
+### Prerequisites
+
+This server requires **Python 3.10 or higher**. The MCP SDK version 1.20.0+ requires Python 3.10+.
+
+### Install Dependencies
+
 Install the server using UV (recommended):
 
 ```bash
@@ -78,6 +84,9 @@ uv sync --dev --all-extras
 Alternatively, install with pip:
 
 ```bash
+# Using Python 3.10+
+python3.11 -m pip install -e .
+# Or if python3 points to 3.10+
 pip install -e .
 ```
 
@@ -109,24 +118,41 @@ python -m src.eclass_mcp_server.server
 ```
 
 ### Cursor
-( as of version 0.48 )
+**Important**: Ensure you have Python 3.10+ installed before setting up in Cursor.
+
 Go to Settings -> MCP. Click on `Add new global MCP server`:
 
 This will open the global `mcp.json` file:
-```
+
+```json
 {
-    "mcpServers": {
-      "server-name": {
-        "command": "python",
-        "args": ["absolute\\path\\to\\eclass-mcp-server\\run_server.py"]
-      }
+  "mcpServers": {
+    "eclass-mcp-server": {
+      "command": "/path/to/python3.11",
+      "args": [
+        "/absolute/path/to/eclass-mcp-server/run_server.py"
+      ]
     }
+  }
 }
 ```
 
-Or try this path format on the `args` field:
-```
-absolute/path/to/eclass-mcp-server/run_server.py
+**Important Notes:**
+- Use the **full path** to Python 3.10+ (e.g., `/usr/local/bin/python3.11` or `/opt/homebrew/bin/python3.11`)
+- The path to `run_server.py` must be **absolute**
+
+**Example (macOS with Homebrew):**
+```json
+{
+  "mcpServers": {
+    "eclass-mcp-server": {
+      "command": "/usr/local/bin/python3.11",
+      "args": [
+        "/Users/yourname/Documents/Projects/MCP/eclass-mcp-server/run_server.py"
+      ]
+    }
+  }
+}
 ```
 
 This command runs the `run_server.py` script that connects the MCP Client with the main server entry point in `server.py`.

@@ -18,8 +18,7 @@ from dotenv import load_dotenv
 
 from mcp.server.models import InitializationOptions
 import mcp.types as types
-from mcp.server import NotificationOptions, Server
-from pydantic import AnyUrl
+from mcp.server.lowlevel import NotificationOptions, Server
 import mcp.server.stdio
 
 # Import from modularized components
@@ -41,7 +40,11 @@ server = Server("eclass-mcp")
 class SessionState:
     def __init__(self):
         # Load environment variables
-        load_dotenv()
+        # Find .env file in project root (more reliable when running from different working directories)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(script_dir))
+        env_path = os.path.join(project_root, '.env')
+        load_dotenv(env_path, override=False)  # override=False respects existing env vars
         
         # Initialize session and state
         self.session = requests.Session()
