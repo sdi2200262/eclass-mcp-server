@@ -124,7 +124,7 @@ Successful course retrieval:
 ```json
 {
   "type": "text",
-  "text": "Found X courses:\n\n1. Course Name 1\n2. Course Name 2\n..."
+  "text": "Found X courses:\n\n1. Course Name 1\n   URL: https://eclass.uoa.gr/courses/COURSE123/\n2. Course Name 2\n   URL: https://eclass.uoa.gr/courses/COURSE456/\n..."
 }
 ```
 
