@@ -162,12 +162,16 @@ def extract_courses(html_content: str, base_url: str) -> List[Dict[str, str]]:
 
 def format_course_list(courses: List[Dict[str, str]]) -> str:
     """
-    Format course list for display.
+    Format course list for display, including the course URL.
     
     Args:
         courses: List of courses with name and URL
         
     Returns:
-        Formatted string with course list
+        Formatted string with course list including URLs
     """
-    return "\n".join([f"{i+1}. {course['name']}" for i, course in enumerate(courses)]) 
+    formatted_lines = []
+    for i, course in enumerate(courses, 1):
+        formatted_lines.append(f"{i}. {course['name']}")
+        formatted_lines.append(f"   URL: {course['url']}")
+    return "\n".join(formatted_lines) 
