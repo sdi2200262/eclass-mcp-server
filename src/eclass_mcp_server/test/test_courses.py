@@ -71,13 +71,18 @@ async def test_get_courses():
     if "Error" in text_content.text:
         print("Course retrieval test FAILED! ❌")
         return False
-    elif "Found" in text_content.text and "courses" in text_content.text:
-        print("Course retrieval test SUCCESS! ✅")
-        return True
     elif "No courses found" in text_content.text:
         print("No courses found, but API worked correctly.")
         print("Course retrieval test SUCCESS! ✅")
         return True
+    elif "Found" in text_content.text and "courses" in text_content.text:
+        if "URL:" in text_content.text:
+            print("Course retrieval test SUCCESS! ✅")
+            return True
+        else:
+            # This case means courses were found, but the URL is missing.
+            print("Course retrieval test FAILED! ❌ Output format is incorrect (missing URLs).")
+            return False
     else:
         print("Unexpected response from course retrieval.")
         print("Course retrieval test FAILED! ❌")

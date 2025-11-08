@@ -314,6 +314,7 @@ def main():
             print(f"Found {len(courses)} courses:")
             for i, course in enumerate(courses, 1):
                 print(f"{i}. {course['name']}")
+                print(f"   URL: {course['url']}")
             
             # Logout
             client.logout()
