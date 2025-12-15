@@ -1,17 +1,6 @@
 # eClass MCP Server Documentation
 
-<p align="center">
-    <strong>Documentation guide for the eClass MCP server implementation</strong>
-</p>
-
-
-<p align="center">
-    <img src="../assets/cobuter-man.png" alt="Cobuter Man">
-</p>
-
-<p align="center">
-    <strong>This documentation explains how the server works, how it integrates with the MCP SDK, and provides technical references</strong>
-</p>
+<strong>This documentation explains how the server works, how it integrates with the MCP SDK, and provides technical references</strong>
 
 ## Documentation Contents
 
@@ -20,34 +9,34 @@ This documentation provides detailed information about the eClass MCP Server imp
 ```
 docs/
 ├── README.md                   # This documentation overview
-├── how-it-works.md             # Core implementation explanation
-├── mcp-sdk-integration.md      # Details on MCP SDK usage
-└── tools-reference.md          # Reference for available tools
+├── architecture.md             # System architecture and design
+└── reference/                  # Technical references
+    ├── wire_protocol.md        # JSON-RPC protocol specification
+    └── tools-reference.md      # Reference for available tools
 ```
 
 ## Documentation Sections
 
-### [How It Works](./how-it-works.md)
+### [System Architecture](./architecture.md)
 
-The `how-it-works.md` document provides a comprehensive explanation of the eClass MCP Server's architecture and implementation. It covers:
+The `architecture.md` document provides a comprehensive explanation of the eClass MCP Server's architecture and implementation. It covers:
 
 - Server initialization and configuration
 - Session state management
-- Request handling flow
+- Authentication flow
 - Modular architecture approach
 
-### [MCP SDK Integration](./mcp-sdk-integration.md)
+### [Wire Protocol Reference](./reference/wire-protocol.md)
 
-The `mcp-sdk-integration.md` document details how the server integrates with the Model Context Protocol (MCP) Python SDK. It explains:
+The `reference/wire-protocol.md` document defines the wire protocol compliance standards for the server. It details:
 
-- SDK components used in the implementation
-- Handler registration and decoration
-- Message processing and response formatting
-- Protocol communication details
+- Exact JSON-RPC 2.0 messages
+- Handshake and initialization
+- Tool listing and execution schemas
 
-### [Tools Reference](./tools-reference.md)
+### [Tools Reference](./reference/tools-reference.md)
 
-The `tools-reference.md` document provides a technical reference for all tools exposed by the server:
+The `reference/tools-reference.md` document provides a technical reference for all tools exposed by the server:
 
 - Complete list of available tools
 - Input schema specifications

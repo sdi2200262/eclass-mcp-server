@@ -45,9 +45,10 @@ eclass-mcp-server/
 ├── .env                        # Environment variables (create from example.env)
 ├── docs/                       # Documentation
 │   ├── README.md               # Documentation overview
-│   ├── how-it-works.md         # Core implementation explanation
-│   ├── mcp-sdk-integration.md  # Details on MCP SDK usage
-│   └── tools-reference.md      # Reference for available tools
+│   ├── architecture.md         # System architecture and design
+│   └── reference/              # Technical references
+│       ├── wire_protocol.md    # JSON-RPC protocol specification
+│       └── tools-reference.md  # Reference for available tools
 ├── src/
     └── eclass_mcp_server/      # Main package
         ├── __init__.py         # Package initialization
