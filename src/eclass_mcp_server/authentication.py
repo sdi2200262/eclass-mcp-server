@@ -8,6 +8,7 @@ It includes functions for logging in, verifying login success, and logging out.
 import logging
 import requests
 from typing import Dict, Tuple, Optional
+from urllib.parse import urlparse
 
 import mcp.types as types
 
@@ -43,7 +44,23 @@ def attempt_login(session_state, username: str, password: str) -> Tuple[bool, Op
         response.raise_for_status()
         
         # Step 3: Extract execution parameter and submit login form to CAS
-        if session_state.sso_domain not in response.url:
+        # Check if we've been redirected to SSO (allow same domain for local testing)
+        # For local testing, SSO might be on the same domain as eClass
+        response_url_domain = urlparse(response.url).netloc
+        sso_domain_netloc = urlparse(session_state.sso_base_url).netloc
+        
+        # Allow redirect if:
+        # 1. SSO domain is in the URL (normal production case)
+        # 2. Response domain matches SSO domain (exact match)
+        # 3. eClass and SSO are on the same domain (local testing scenario)
+        is_valid_redirect = (
+            session_state.sso_domain in response.url or
+            response_url_domain == sso_domain_netloc or
+            (session_state.eclass_domain == session_state.sso_domain and 
+             session_state.eclass_domain in response.url)
+        )
+        
+        if not is_valid_redirect:
             return False, f"Unexpected redirect to {response.url}"
         
         execution, action, error_text = html_parsing.extract_cas_form_data(

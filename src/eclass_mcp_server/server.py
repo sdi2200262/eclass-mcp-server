@@ -62,7 +62,9 @@ class SessionState:
         
         # Set SSO domain (default to UoA's SSO)
         self.sso_domain = os.getenv('ECLASS_SSO_DOMAIN', 'sso.uoa.gr')
-        self.sso_base_url = f"https://{self.sso_domain}"
+        # Make protocol configurable (default to https for production, but allow http for local testing)
+        sso_protocol = os.getenv('ECLASS_SSO_PROTOCOL', 'https')
+        self.sso_base_url = f"{sso_protocol}://{self.sso_domain}"
         
         # Set eClass URLs
         self.login_form_url = f"{self.base_url}/main/login_form.php"

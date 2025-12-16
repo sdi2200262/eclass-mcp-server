@@ -51,7 +51,9 @@ class EClassClient:
         
         # Set SSO domain (default to UoA's SSO)
         self.sso_domain = os.getenv('ECLASS_SSO_DOMAIN', 'sso.uoa.gr')
-        self.sso_base_url = f"https://{self.sso_domain}"
+        # Make protocol configurable (default to https for production, but allow http for local testing)
+        sso_protocol = os.getenv('ECLASS_SSO_PROTOCOL', 'https')
+        self.sso_base_url = f"{sso_protocol}://{self.sso_domain}"
         
         # Set SSO URLs
         self.login_form_url = f"{self.base_url}/main/login_form.php"
@@ -134,8 +136,23 @@ class EClassClient:
         try:
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Check if we're already on the CAS login page
-            if self.sso_domain not in response.url:
+            # Check if we've been redirected to SSO (allow same domain for local testing)
+            # For local testing, SSO might be on the same domain as eClass
+            response_url_domain = urlparse(response.url).netloc
+            sso_domain_netloc = urlparse(self.sso_base_url).netloc
+            
+            # Allow redirect if:
+            # 1. SSO domain is in the URL (normal production case)
+            # 2. Response domain matches SSO domain (exact match)
+            # 3. eClass and SSO are on the same domain (local testing scenario)
+            is_valid_redirect = (
+                self.sso_domain in response.url or
+                response_url_domain == sso_domain_netloc or
+                (self.eclass_domain == self.sso_domain and 
+                 self.eclass_domain in response.url)
+            )
+            
+            if not is_valid_redirect:
                 logger.error(f"Unexpected redirect to {response.url}")
                 return False
             
