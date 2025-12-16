@@ -96,10 +96,18 @@ pip install -e .
 Create a `.env` file in the root directory with the following configuration (or copy and rename the provided `example.env` file):
 
 ```
+# Optional - defaults to https://eclass.uoa.gr
 ECLASS_URL=https://eclass.uoa.gr
+
+# Optional - defaults to sso.uoa.gr (only change for different eClass instances)
+ECLASS_SSO_DOMAIN=sso.uoa.gr
+
+# Required - your eClass credentials
 ECLASS_USERNAME=your_username
 ECLASS_PASSWORD=your_password
 ```
+
+**Note:** `ECLASS_URL` and `ECLASS_SSO_DOMAIN` are optional and default to UoA's eClass instance. Only the UoA instance is currently supported and tested.
 
 All credentials must be provided in the .env file. The server does not accept credentials as parameters.
 

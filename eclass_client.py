@@ -11,6 +11,7 @@ import os
 import re
 import logging
 import requests
+from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
@@ -39,18 +40,23 @@ class EClassClient:
         self.session = requests.Session()
         self.logged_in = False
         
-        # Set base URL
-        self.base_url = base_url or os.getenv('ECLASS_URL')
-        if not self.base_url:
-            raise ValueError("eClass URL not provided and not found in environment")
+        # Set base URL (default to UoA's eClass instance)
+        self.base_url = base_url or os.getenv('ECLASS_URL', 'https://eclass.uoa.gr')
         
         # Remove trailing slash if present
         self.base_url = self.base_url.rstrip('/')
         
+        # Extract eclass domain from base_url for redirect checks
+        self.eclass_domain = urlparse(self.base_url).netloc
+        
+        # Set SSO domain (default to UoA's SSO)
+        self.sso_domain = os.getenv('ECLASS_SSO_DOMAIN', 'sso.uoa.gr')
+        self.sso_base_url = f"https://{self.sso_domain}"
+        
         # Set SSO URLs
         self.login_form_url = f"{self.base_url}/main/login_form.php"
         
-        logger.info(f"Initialized eClass client for {self.base_url}")
+        logger.info(f"Initialized eClass client for {self.base_url} (SSO: {self.sso_domain})")
     
     def login(self, username=None, password=None):
         """
@@ -129,7 +135,7 @@ class EClassClient:
             soup = BeautifulSoup(response.text, 'html.parser')
             
             # Check if we're already on the CAS login page
-            if 'sso.uoa.gr' not in response.url:
+            if self.sso_domain not in response.url:
                 logger.error(f"Unexpected redirect to {response.url}")
                 return False
             
@@ -154,9 +160,9 @@ class EClassClient:
             elif not action.startswith(('http://', 'https://')):
                 # Make the action URL absolute
                 if action.startswith('/'):
-                    action = f"https://sso.uoa.gr{action}"
+                    action = f"{self.sso_base_url}{action}"
                 else:
-                    action = f"https://sso.uoa.gr/{action}"
+                    action = f"{self.sso_base_url}/{action}"
             
             # Prepare login data
             login_data = {
@@ -193,7 +199,7 @@ class EClassClient:
         # Step 4: Check if we've been redirected to eClass and verify login success
         try:
             # We should now be redirected back to eClass
-            if 'eclass.uoa.gr' in response.url:
+            if self.eclass_domain in response.url:
                 # Try to access portfolio page to verify login
                 portfolio_url = f"{self.base_url}/main/portfolio.php"
                 response = self.session.get(portfolio_url)

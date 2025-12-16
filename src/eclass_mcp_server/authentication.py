@@ -43,10 +43,12 @@ def attempt_login(session_state, username: str, password: str) -> Tuple[bool, Op
         response.raise_for_status()
         
         # Step 3: Extract execution parameter and submit login form to CAS
-        if 'sso.uoa.gr' not in response.url:
+        if session_state.sso_domain not in response.url:
             return False, f"Unexpected redirect to {response.url}"
         
-        execution, action, error_text = html_parsing.extract_cas_form_data(response.text, response.url)
+        execution, action, error_text = html_parsing.extract_cas_form_data(
+            response.text, response.url, session_state.sso_base_url
+        )
         
         # Handle extraction errors
         if error_text and ('authenticate' in error_text.lower() or 'credentials' in error_text.lower()):
@@ -83,7 +85,7 @@ def attempt_login(session_state, username: str, password: str) -> Tuple[bool, Op
                 return False, "Authentication failed: Invalid credentials"
         
         # Step 4: Check if we've been redirected to eClass and verify login success
-        if 'eclass.uoa.gr' in response.url:
+        if session_state.eclass_domain in response.url:
             # Try to access portfolio page to verify login
             response = session_state.session.get(session_state.portfolio_url)
             response.raise_for_status()

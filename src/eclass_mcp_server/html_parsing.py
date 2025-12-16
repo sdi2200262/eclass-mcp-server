@@ -54,13 +54,14 @@ def extract_sso_link(html_content: str, base_url: str) -> Optional[str]:
     logger.debug(f"Extracted SSO link: {sso_link}")
     return sso_link
 
-def extract_cas_form_data(html_content: str, current_url: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+def extract_cas_form_data(html_content: str, current_url: str, sso_base_url: str = "https://sso.uoa.gr") -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     Extract execution parameter and form action from CAS login page.
     
     Args:
         html_content: HTML content of the CAS login page
         current_url: Current URL of the page (used as fallback for form action)
+        sso_base_url: Base URL of the SSO server (default: https://sso.uoa.gr)
         
     Returns:
         Tuple of (execution_value, form_action, error_message)
@@ -93,9 +94,9 @@ def extract_cas_form_data(html_content: str, current_url: str) -> Tuple[Optional
     elif not action.startswith(('http://', 'https://')):
         # Make the action URL absolute
         if action.startswith('/'):
-            action = f"https://sso.uoa.gr{action}"
+            action = f"{sso_base_url}{action}"
         else:
-            action = f"https://sso.uoa.gr/{action}"
+            action = f"{sso_base_url}/{action}"
     
     return execution, action, error_text
 

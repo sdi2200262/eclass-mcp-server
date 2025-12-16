@@ -11,6 +11,7 @@ import os
 import logging
 import re
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -50,16 +51,20 @@ class SessionState:
         self.session = requests.Session()
         self.logged_in = False
         
-        # Set base URL
-        self.base_url = os.getenv('ECLASS_URL')
-        if not self.base_url:
-            self.base_url = "https://eclass.uoa.gr"
-            logger.warning(f"ECLASS_URL not set in environment, using default: {self.base_url}")
+        # Set base URL (default to UoA's eClass instance)
+        self.base_url = os.getenv('ECLASS_URL', 'https://eclass.uoa.gr')
         
         # Remove trailing slash if present
         self.base_url = self.base_url.rstrip('/')
         
-        # Set SSO URLs
+        # Extract eclass domain from base_url for redirect checks
+        self.eclass_domain = urlparse(self.base_url).netloc
+        
+        # Set SSO domain (default to UoA's SSO)
+        self.sso_domain = os.getenv('ECLASS_SSO_DOMAIN', 'sso.uoa.gr')
+        self.sso_base_url = f"https://{self.sso_domain}"
+        
+        # Set eClass URLs
         self.login_form_url = f"{self.base_url}/main/login_form.php"
         self.portfolio_url = f"{self.base_url}/main/portfolio.php"
         self.logout_url = f"{self.base_url}/index.php?logout=yes"
@@ -68,7 +73,7 @@ class SessionState:
         self.username = None
         self.courses = []
         
-        logger.info(f"Initialized eClass session for {self.base_url}")
+        logger.info(f"Initialized eClass session for {self.base_url} (SSO: {self.sso_domain})")
     
     def is_session_valid(self) -> bool:
         """Check if the current session is still valid without full re-auth."""

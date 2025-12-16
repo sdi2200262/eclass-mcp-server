@@ -44,6 +44,9 @@ The server implements a specific scraping-based authentication flow to handle Uo
 ## Configuration
 
 Configuration is handled via environment variables loaded from a `.env` file:
-*   `ECLASS_URL`: The base URL of the eClass instance.
+*   `ECLASS_URL`: The base URL of the eClass instance (optional, defaults to `https://eclass.uoa.gr`).
+*   `ECLASS_SSO_DOMAIN`: The domain of the SSO server (optional, defaults to `sso.uoa.gr`). Only change this if using a different eClass instance with a different SSO provider.
 *   `ECLASS_USERNAME`: User credentials.
 *   `ECLASS_PASSWORD`: User credentials.
+
+**Note:** Only the UoA eClass instance is currently supported and tested.
