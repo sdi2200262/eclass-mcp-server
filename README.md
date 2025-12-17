@@ -62,25 +62,29 @@ python -m src.eclass_mcp_server.server
 
 ## MCP Client Configuration
 
-### Cursor
+To use this MCP server with Claude Desktop, VS Code, Cursor, or any MCP-compatible client, configure your client to run:
 
-Add to your MCP settings (`Settings -> MCP -> Add new global MCP server`):
+```bash
+python3 /absolute/path/to/eclass-mcp-server/run_server.py
+```
+
+Set the following environment variables in your client's MCP configuration:
 
 ```json
 {
-  "mcpServers": {
-    "eclass-mcp-server": {
-      "command": "/path/to/python3.11",
-      "args": ["/absolute/path/to/eclass-mcp-server/run_server.py"]
-    }
+  "env": {
+    "ECLASS_USERNAME": "your_username",
+    "ECLASS_PASSWORD": "your_password"
   }
 }
 ```
 
-### Claude Desktop
+**Optional environment variables:**
+- `ECLASS_URL` - OpenEclass instance URL (default: `https://eclass.uoa.gr`)
+- `ECLASS_SSO_DOMAIN` - SSO domain (default: `sso.uoa.gr`)
+- `ECLASS_SSO_PROTOCOL` - SSO protocol (default: `https`)
 
-1. Go to `Settings -> Server`
-2. Add server with command: path to `run_server.py`
+Refer to your specific client's documentation for how to add MCP servers to your configuration.
 
 ## Available Tools
 
