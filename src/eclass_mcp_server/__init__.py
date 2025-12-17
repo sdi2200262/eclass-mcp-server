@@ -1,9 +1,12 @@
-from . import server
+"""eClass MCP Server - MCP integration for Open eClass platform."""
+
 import asyncio
 
-def main():
+from . import server
+
+__all__ = ['main', 'server']
+
+
+def main() -> None:
     """Main entry point for the package."""
     asyncio.run(server.main())
-
-# Optionally expose other important items at package level
-__all__ = ['main', 'server']

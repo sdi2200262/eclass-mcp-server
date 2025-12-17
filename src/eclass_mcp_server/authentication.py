@@ -1,83 +1,64 @@
 """
-Authentication Module for eClass MCP Server
+Authentication module for eClass MCP Server.
 
-This module handles authentication with the eClass platform through UoA's SSO system.
-It includes functions for logging in, verifying login success, and logging out.
+Handles authentication with eClass through UoA's SSO (CAS) system.
 """
 
+from __future__ import annotations
+
 import logging
-import requests
-from typing import Dict, Tuple, Optional
+from typing import TYPE_CHECKING, Optional, Tuple
 from urllib.parse import urlparse
 
 import mcp.types as types
+import requests
 
 from . import html_parsing
 
-# Configure logging
+if TYPE_CHECKING:
+    from .server import SessionState
+
 logger = logging.getLogger('eclass_mcp_server.authentication')
 
-def attempt_login(session_state, username: str, password: str) -> Tuple[bool, Optional[str]]:
+
+def attempt_login(
+    session_state: SessionState, username: str, password: str
+) -> Tuple[bool, Optional[str]]:
     """
     Attempt to log in to eClass using the SSO authentication flow.
     
-    Args:
-        session_state: The current session state
-        username: eClass username
-        password: eClass password
-        
     Returns:
-        Tuple of (success, error_message)
+        Tuple of (success, error_message). On success, error_message is None.
     """
     try:
         # Step 1: Visit the eClass login form page
         response = session_state.session.get(session_state.login_form_url)
         response.raise_for_status()
         
-        # Step 2: Find the SSO login button and follow it
+        # Step 2: Find and follow the SSO login link
         sso_link = html_parsing.extract_sso_link(response.text, session_state.base_url)
         if not sso_link:
             return False, "Could not find SSO login link on the login page"
         
-        # Follow the SSO link
         response = session_state.session.get(sso_link)
         response.raise_for_status()
         
-        # Step 3: Extract execution parameter and submit login form to CAS
-        # Check if we've been redirected to SSO (allow same domain for local testing)
-        # For local testing, SSO might be on the same domain as eClass
-        response_url_domain = urlparse(response.url).netloc
-        sso_domain_netloc = urlparse(session_state.sso_base_url).netloc
-        
-        # Allow redirect if:
-        # 1. SSO domain is in the URL (normal production case)
-        # 2. Response domain matches SSO domain (exact match)
-        # 3. eClass and SSO are on the same domain (local testing scenario)
-        is_valid_redirect = (
-            session_state.sso_domain in response.url or
-            response_url_domain == sso_domain_netloc or
-            (session_state.eclass_domain == session_state.sso_domain and 
-             session_state.eclass_domain in response.url)
-        )
-        
-        if not is_valid_redirect:
+        # Step 3: Validate SSO redirect and extract CAS form data
+        if not _is_valid_sso_redirect(response.url, session_state):
             return False, f"Unexpected redirect to {response.url}"
         
         execution, action, error_text = html_parsing.extract_cas_form_data(
             response.text, response.url, session_state.sso_base_url
         )
         
-        # Handle extraction errors
         if error_text and ('authenticate' in error_text.lower() or 'credentials' in error_text.lower()):
             return False, f"Authentication error: {error_text}"
-            
         if not execution:
             return False, "Could not find execution parameter on SSO page"
-            
         if not action:
             return False, "Could not find login form on SSO page"
         
-        # Prepare login data
+        # Step 4: Submit credentials to CAS
         login_data = {
             'username': username,
             'password': password,
@@ -86,151 +67,131 @@ def attempt_login(session_state, username: str, password: str) -> Tuple[bool, Op
             'geolocation': ''
         }
         
-        # Submit login form
         response = session_state.session.post(action, data=login_data)
         response.raise_for_status()
         
-        # Check for authentication errors
-        if 'Πόροι Πληροφορικής ΕΚΠΑ' not in response.text and 'The credentials you provided cannot be determined to be authentic' not in response.text:
-            logger.info("Successfully authenticated with SSO")
-        else:
-            # Re-parse to get error message if present
-            execution, action, error_text = html_parsing.extract_cas_form_data(response.text, response.url)
+        # Check for authentication errors in response
+        if 'Πόροι Πληροφορικής ΕΚΠΑ' in response.text or \
+           'The credentials you provided cannot be determined to be authentic' in response.text:
+            _, _, error_text = html_parsing.extract_cas_form_data(response.text, response.url)
             if error_text:
                 return False, f"Authentication error: {error_text}"
-            else:
-                return False, "Authentication failed: Invalid credentials"
+            return False, "Authentication failed: Invalid credentials"
         
-        # Step 4: Check if we've been redirected to eClass and verify login success
-        if session_state.eclass_domain in response.url:
-            # Try to access portfolio page to verify login
-            response = session_state.session.get(session_state.portfolio_url)
-            response.raise_for_status()
-            
-            # Check if we can access the portfolio page
-            if html_parsing.verify_login_success(response.text):
-                session_state.logged_in = True
-                session_state.username = username
-                logger.info("Login successful, redirected to eClass portfolio")
-                return True, None
-            else:
-                return False, "Could not access portfolio page after login"
-        else:
+        logger.info("Successfully authenticated with SSO")
+        
+        # Step 5: Verify login by accessing portfolio page
+        if session_state.eclass_domain not in response.url:
             return False, f"Unexpected redirect after login: {response.url}"
+        
+        response = session_state.session.get(session_state.portfolio_url)
+        response.raise_for_status()
+        
+        if not html_parsing.verify_login_success(response.text):
+            return False, "Could not access portfolio page after login"
+        
+        session_state.logged_in = True
+        session_state.username = username
+        logger.info("Login successful, redirected to eClass portfolio")
+        return True, None
     
     except requests.RequestException as e:
-        logger.error(f"Request error during login: {str(e)}")
-        return False, f"Network error during login process: {str(e)}"
+        logger.error(f"Request error during login: {e}")
+        return False, f"Network error during login process: {e}"
     except Exception as e:
-        logger.error(f"Login error: {str(e)}")
-        return False, f"Error during login process: {str(e)}"
+        logger.error(f"Login error: {e}")
+        return False, f"Error during login process: {e}"
 
-def perform_logout(session_state) -> Tuple[bool, Optional[str]]:
+
+def _is_valid_sso_redirect(response_url: str, session_state: SessionState) -> bool:
+    """Check if the redirect is to a valid SSO domain."""
+    response_url_domain = urlparse(response_url).netloc
+    sso_domain_netloc = urlparse(session_state.sso_base_url).netloc
+    
+    # Valid if: SSO domain in URL, exact domain match, or same domain for local testing
+    return (
+        session_state.sso_domain in response_url or
+        response_url_domain == sso_domain_netloc or
+        (session_state.eclass_domain == session_state.sso_domain and
+         session_state.eclass_domain in response_url)
+    )
+
+
+def perform_logout(session_state: SessionState) -> Tuple[bool, Optional[str]]:
     """
     Log out from eClass.
     
-    Args:
-        session_state: The current session state
-        
     Returns:
-        Tuple of (success, error_message or username)
+        Tuple of (success, username_or_error).
+        On success with prior login: (True, username)
+        On success without prior login: (True, None)
+        On failure: (False, error_message)
     """
     if not session_state.logged_in:
-        return True, None  # Already logged out
+        return True, None
     
     try:
         response = session_state.session.get(session_state.logout_url)
         response.raise_for_status()
         
-        # Store username for response message
         username = session_state.username
-        
-        # Reset session state
         session_state.reset()
-        
         return True, username
-    
     except Exception as e:
-        logger.error(f"Logout error: {str(e)}")
-        return False, f"Error during logout: {str(e)}"
+        logger.error(f"Logout error: {e}")
+        return False, f"Error during logout: {e}"
 
-def format_login_response(success: bool, message: Optional[str], username: Optional[str] = None) -> types.TextContent:
-    """
-    Format login response for MCP.
-    
-    Args:
-        success: Whether login was successful
-        message: Error message if login failed
-        username: Username if login succeeded
-        
-    Returns:
-        Formatted MCP TextContent response
-    """
+
+def format_login_response(
+    success: bool, message: Optional[str], username: Optional[str] = None
+) -> types.TextContent:
+    """Format login response for MCP."""
     if success:
         return types.TextContent(
             type="text",
             text=f"Login successful! You are now logged in as {username}.",
         )
-    else:
-        return types.TextContent(
-            type="text",
-            text=f"Error: {message}",
-        )
+    return types.TextContent(
+        type="text",
+        text=f"Error: {message}",
+    )
 
-def format_logout_response(success: bool, username_or_error: Optional[str]) -> types.TextContent:
-    """
-    Format logout response for MCP.
-    
-    Args:
-        success: Whether logout was successful
-        username_or_error: Username if logout succeeded, error message if failed
-        
-    Returns:
-        Formatted MCP TextContent response
-    """
+
+def format_logout_response(
+    success: bool, username_or_error: Optional[str]
+) -> types.TextContent:
+    """Format logout response for MCP."""
     if success:
-        if username_or_error:  # If we had a username
+        if username_or_error:
             return types.TextContent(
                 type="text",
                 text=f"Successfully logged out user {username_or_error}.",
             )
-        else:
-            return types.TextContent(
-                type="text",
-                text="Not logged in, nothing to do.",
-            )
-    else:
         return types.TextContent(
             type="text",
-            text=f"Error during logout: {username_or_error}",
+            text="Not logged in, nothing to do.",
         )
+    return types.TextContent(
+        type="text",
+        text=f"Error during logout: {username_or_error}",
+    )
 
-def format_authstatus_response(session_state) -> types.TextContent:
-    """
-    Format authentication status response.
-    
-    Args:
-        session_state: The current session state
-        
-    Returns:
-        Formatted MCP TextContent response
-    """
+
+def format_authstatus_response(session_state: SessionState) -> types.TextContent:
+    """Format authentication status response for MCP."""
     if not session_state.logged_in:
         return types.TextContent(
             type="text",
             text="Status: Not logged in",
         )
     
-    # Check if session is still valid
-    is_valid = session_state.is_session_valid()
-    
-    if is_valid:
+    if session_state.is_session_valid():
         return types.TextContent(
             type="text",
             text=f"Status: Logged in as {session_state.username}\nCourses: {len(session_state.courses)} enrolled",
         )
-    else:
-        return types.TextContent(
-            type="text",
-            text="Status: Session expired. Please log in again.",
-        ) 
+    
+    return types.TextContent(
+        type="text",
+        text="Status: Session expired. Please log in again.",
+    )

@@ -1,40 +1,35 @@
 """
-HTML Parsing Module for eClass MCP Server
+HTML parsing utilities for eClass MCP Server.
 
-This module contains functions for parsing HTML content from eClass pages
-using BeautifulSoup. It extracts various elements such as SSO links,
-form parameters, and course information.
+Uses BeautifulSoup to extract data from eClass and CAS SSO HTML responses.
 """
 
 import logging
-from typing import List, Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
+
 from bs4 import BeautifulSoup
 
-# Configure logging
 logger = logging.getLogger('eclass_mcp_server.html_parsing')
+
 
 def extract_sso_link(html_content: str, base_url: str) -> Optional[str]:
     """
     Extract the SSO login link from the eClass login page.
     
-    Args:
-        html_content: HTML content of the login page
-        base_url: Base URL of the eClass instance
-        
     Returns:
-        The SSO login URL or None if not found
+        Absolute SSO login URL, or None if not found.
     """
     soup = BeautifulSoup(html_content, 'html.parser')
     sso_link = None
     
-    # Look for the UoA login button (it could be a button or a link)
+    # Look for UoA login button
     for link in soup.find_all('a'):
         if 'Είσοδος με λογαριασμό ΕΚΠΑ' in link.text or 'ΕΚΠΑ' in link.text:
             sso_link = link.get('href')
             break
     
+    # Fallback: look for CAS form action
     if not sso_link:
-        # Try alternate method to find the SSO link
         for form in soup.find_all('form'):
             if form.get('action') and 'cas.php' in form.get('action'):
                 sso_link = form.get('action')
@@ -44,36 +39,33 @@ def extract_sso_link(html_content: str, base_url: str) -> Optional[str]:
         logger.warning("Could not find SSO login link on the login page")
         return None
     
-    # Make sure the URL is absolute
+    # Ensure URL is absolute
     if not sso_link.startswith(('http://', 'https://')):
-        if sso_link.startswith('/'):
-            sso_link = f"{base_url}{sso_link}"
-        else:
-            sso_link = f"{base_url}/{sso_link}"
+        sso_link = f"{base_url}/{sso_link.lstrip('/')}"
     
     logger.debug(f"Extracted SSO link: {sso_link}")
     return sso_link
 
-def extract_cas_form_data(html_content: str, current_url: str, sso_base_url: str = "https://sso.uoa.gr") -> Tuple[Optional[str], Optional[str], Optional[str]]:
+
+def extract_cas_form_data(
+    html_content: str,
+    current_url: str,
+    sso_base_url: str = "https://sso.uoa.gr"
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     Extract execution parameter and form action from CAS login page.
     
-    Args:
-        html_content: HTML content of the CAS login page
-        current_url: Current URL of the page (used as fallback for form action)
-        sso_base_url: Base URL of the SSO server (default: https://sso.uoa.gr)
-        
     Returns:
-        Tuple of (execution_value, form_action, error_message)
-        If extraction fails, appropriate values will be None
+        Tuple of (execution_value, form_action, error_message).
+        On parsing failure, appropriate values will be None.
     """
     soup = BeautifulSoup(html_content, 'html.parser')
     
-    # Check if we're on the error page
+    # Check for error message
     error_msg = soup.find('div', {'id': 'msg'})
     error_text = error_msg.text.strip() if error_msg else None
     
-    # Find execution value
+    # Find execution token
     execution_input = soup.find('input', {'name': 'execution'})
     if not execution_input:
         logger.warning("Could not find execution parameter on SSO page")
@@ -81,7 +73,7 @@ def extract_cas_form_data(html_content: str, current_url: str, sso_base_url: str
     
     execution = execution_input.get('value')
     
-    # Find login form action
+    # Find login form
     form = soup.find('form', {'id': 'fm1'}) or soup.find('form')
     if not form:
         logger.warning("Could not find login form on SSO page")
@@ -89,46 +81,33 @@ def extract_cas_form_data(html_content: str, current_url: str, sso_base_url: str
     
     action = form.get('action')
     if not action:
-        # Use the current URL as fallback
         action = current_url
     elif not action.startswith(('http://', 'https://')):
-        # Make the action URL absolute
-        if action.startswith('/'):
-            action = f"{sso_base_url}{action}"
-        else:
-            action = f"{sso_base_url}/{action}"
+        action = f"{sso_base_url}/{action.lstrip('/')}"
     
     return execution, action, error_text
 
+
 def verify_login_success(html_content: str) -> bool:
     """
-    Verify if login was successful by checking for expected content on the portfolio page.
-    
-    Args:
-        html_content: HTML content of the portfolio page
-        
-    Returns:
-        True if login was successful, False otherwise
+    Verify if login was successful by checking for portfolio page content.
     """
-    return ('Μαθήματα' in html_content or 
-            'portfolio' in html_content.lower() or 
+    return ('Μαθήματα' in html_content or
+            'portfolio' in html_content.lower() or
             'course' in html_content.lower())
+
 
 def extract_courses(html_content: str, base_url: str) -> List[Dict[str, str]]:
     """
     Extract course information from the portfolio page.
     
-    Args:
-        html_content: HTML content of the portfolio page
-        base_url: Base URL of the eClass instance
-        
     Returns:
-        List of courses with name and URL
+        List of dicts with 'name' and 'url' keys.
     """
     courses = []
     soup = BeautifulSoup(html_content, 'html.parser')
     
-    # Try different CSS selectors that might contain course information
+    # Try specific course selectors
     course_elements = (
         soup.select('.course-title') or
         soup.select('.lesson-title') or
@@ -136,43 +115,49 @@ def extract_courses(html_content: str, base_url: str) -> List[Dict[str, str]]:
         soup.select('.course-info h4')
     )
     
-    if not course_elements:
-        # Try to find course links using a more general approach
-        for link in soup.find_all('a'):
-            href = link.get('href', '')
-            if 'courses' in href or 'course.php' in href:
-                course_name = link.text.strip()
-                if course_name:  # Only include if there's a name
-                    courses.append({
-                        'name': course_name,
-                        'url': href if href.startswith('http') else f"{base_url}/{href.lstrip('/')}"
-                    })
-    else:
+    if course_elements:
         for course_elem in course_elements:
             course_link = course_elem.find('a') or course_elem
             if course_link and course_link.get('href'):
                 course_name = course_link.text.strip()
                 course_url = course_link.get('href')
-                courses.append({
-                    'name': course_name,
-                    'url': course_url if course_url.startswith('http') else f"{base_url}/{course_url.lstrip('/')}"
-                })
+                if course_name:
+                    courses.append({
+                        'name': course_name,
+                        'url': _make_absolute_url(course_url, base_url)
+                    })
+    else:
+        # Fallback: find course links by URL pattern
+        for link in soup.find_all('a'):
+            href = link.get('href', '')
+            if 'courses' in href or 'course.php' in href:
+                course_name = link.text.strip()
+                if course_name:
+                    courses.append({
+                        'name': course_name,
+                        'url': _make_absolute_url(href, base_url)
+                    })
     
     logger.debug(f"Extracted {len(courses)} courses")
     return courses
 
+
+def _make_absolute_url(url: str, base_url: str) -> str:
+    """Convert relative URL to absolute URL."""
+    if url.startswith(('http://', 'https://')):
+        return url
+    return f"{base_url}/{url.lstrip('/')}"
+
+
 def format_course_list(courses: List[Dict[str, str]]) -> str:
     """
-    Format course list for display, including the course URL.
+    Format course list for display.
     
-    Args:
-        courses: List of courses with name and URL
-        
     Returns:
-        Formatted string with course list including URLs
+        Formatted string with numbered courses and URLs.
     """
-    formatted_lines = []
+    lines = []
     for i, course in enumerate(courses, 1):
-        formatted_lines.append(f"{i}. {course['name']}")
-        formatted_lines.append(f"   URL: {course['url']}")
-    return "\n".join(formatted_lines) 
+        lines.append(f"{i}. {course['name']}")
+        lines.append(f"   URL: {course['url']}")
+    return "\n".join(lines)

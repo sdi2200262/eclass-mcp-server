@@ -1,120 +1,99 @@
 """
 eClass MCP Server - MCP Integration for Open eClass Platform
 
-This module provides an MCP server for interacting with an eClass platform instance.
-It handles authentication, session management, and course access for eClass resources.
-Specifically tailored for UoA's SSO authentication system.
+Provides an MCP server for interacting with eClass through UoA's SSO authentication.
 """
 
 import asyncio
-import os
 import logging
-import re
-from typing import Any, Dict, List, Optional
+import os
+from typing import Any, Dict, List
 from urllib.parse import urlparse
 
 import requests
-from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-
-from mcp.server.models import InitializationOptions
-import mcp.types as types
 from mcp.server.lowlevel import NotificationOptions, Server
+from mcp.server.models import InitializationOptions
 import mcp.server.stdio
+import mcp.types as types
 
-# Import from modularized components
 from . import authentication
 from . import course_management
 from . import html_parsing
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger('eclass_mcp_server')
 
-# Initialize the MCP server
 server = Server("eclass-mcp")
 
-# Global session state - maintains authentication state between calls
+
 class SessionState:
-    def __init__(self):
-        # Load environment variables
-        # Find .env file in project root (more reliable when running from different working directories)
+    """Maintains authentication state between MCP tool calls."""
+    
+    def __init__(self) -> None:
+        # Load .env from project root
         script_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(script_dir))
         env_path = os.path.join(project_root, '.env')
-        load_dotenv(env_path, override=False)  # override=False respects existing env vars
+        load_dotenv(env_path, override=False)
         
-        # Initialize session and state
         self.session = requests.Session()
         self.logged_in = False
         
-        # Set base URL (default to UoA's eClass instance)
-        self.base_url = os.getenv('ECLASS_URL', 'https://eclass.uoa.gr')
-        
-        # Remove trailing slash if present
-        self.base_url = self.base_url.rstrip('/')
-        
-        # Extract eclass domain from base_url for redirect checks
+        # Base URL configuration
+        self.base_url = os.getenv('ECLASS_URL', 'https://eclass.uoa.gr').rstrip('/')
         self.eclass_domain = urlparse(self.base_url).netloc
         
-        # Set SSO domain (default to UoA's SSO)
+        # SSO configuration
         self.sso_domain = os.getenv('ECLASS_SSO_DOMAIN', 'sso.uoa.gr')
-        # Make protocol configurable (default to https for production, but allow http for local testing)
         sso_protocol = os.getenv('ECLASS_SSO_PROTOCOL', 'https')
         self.sso_base_url = f"{sso_protocol}://{self.sso_domain}"
         
-        # Set eClass URLs
+        # eClass endpoint URLs
         self.login_form_url = f"{self.base_url}/main/login_form.php"
         self.portfolio_url = f"{self.base_url}/main/portfolio.php"
         self.logout_url = f"{self.base_url}/index.php?logout=yes"
         
-        # Store user information
-        self.username = None
-        self.courses = []
+        self.username: str | None = None
+        self.courses: List[Dict[str, str]] = []
         
         logger.info(f"Initialized eClass session for {self.base_url} (SSO: {self.sso_domain})")
     
     def is_session_valid(self) -> bool:
-        """Check if the current session is still valid without full re-auth."""
+        """Check if the current session is still valid."""
         if not self.logged_in:
             return False
         
         try:
-            # Try accessing a protected resource that requires authentication
             response = self.session.get(self.portfolio_url, allow_redirects=False)
-            # If we get redirected to login page, session is invalid
             if response.status_code == 302 and 'login' in response.headers.get('Location', ''):
                 self.logged_in = False
                 return False
-            # Check for successful access to the portfolio page
-            if response.status_code == 200:
-                if html_parsing.verify_login_success(response.text):
-                    return True
-            # Session is invalid
+            if response.status_code == 200 and html_parsing.verify_login_success(response.text):
+                return True
             self.logged_in = False
             return False
-        except:
+        except Exception:
             self.logged_in = False
             return False
     
-    def reset(self):
+    def reset(self) -> None:
         """Reset the session state."""
         self.session = requests.Session()
         self.logged_in = False
         self.username = None
         self.courses = []
 
-# Initialize global session state
+
 session_state = SessionState()
+
 
 @server.list_tools()
 async def handle_list_tools() -> list[types.Tool]:
-    """
-    List available eClass tools.
-    """
+    """List available eClass tools."""
     return [
         types.Tool(
             name="login",
@@ -122,7 +101,10 @@ async def handle_list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "random_string": {"type": "string", "description": "Dummy parameter for no-parameter tools"},
+                    "random_string": {
+                        "type": "string",
+                        "description": "Dummy parameter for no-parameter tools"
+                    },
                 },
                 "required": ["random_string"],
             },
@@ -133,7 +115,10 @@ async def handle_list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "random_string": {"type": "string", "description": "Dummy parameter for no-parameter tools"},
+                    "random_string": {
+                        "type": "string",
+                        "description": "Dummy parameter for no-parameter tools"
+                    },
                 },
                 "required": ["random_string"],
             },
@@ -144,7 +129,10 @@ async def handle_list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "random_string": {"type": "string", "description": "Dummy parameter for no-parameter tools"},
+                    "random_string": {
+                        "type": "string",
+                        "description": "Dummy parameter for no-parameter tools"
+                    },
                 },
                 "required": ["random_string"],
             },
@@ -155,7 +143,10 @@ async def handle_list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "random_string": {"type": "string", "description": "Dummy parameter for no-parameter tools"},
+                    "random_string": {
+                        "type": "string",
+                        "description": "Dummy parameter for no-parameter tools"
+                    },
                 },
                 "required": ["random_string"],
             },
@@ -166,11 +157,9 @@ async def handle_list_tools() -> list[types.Tool]:
 async def handle_call_tool(
     name: str, arguments: Dict[str, Any] | None
 ) -> List[types.TextContent | types.ImageContent | types.EmbeddedResource]:
-    """
-    Handle eClass tool execution requests.
-    """
+    """Handle eClass tool execution requests."""
     if name == "login":
-        return await handle_login({})
+        return await handle_login()
     elif name == "get_courses":
         return await handle_get_courses()
     elif name == "logout":
@@ -180,9 +169,9 @@ async def handle_call_tool(
     else:
         raise ValueError(f"Unknown tool: {name}")
 
-async def handle_login(arguments: Dict[str, Any]) -> List[types.TextContent]:
+
+async def handle_login() -> List[types.TextContent]:
     """Handle login to eClass."""
-    # Check if already logged in
     if session_state.logged_in and session_state.is_session_valid():
         return [
             types.TextContent(
@@ -191,11 +180,9 @@ async def handle_login(arguments: Dict[str, Any]) -> List[types.TextContent]:
             )
         ]
     
-    # Reset session if needed
     if session_state.logged_in and not session_state.is_session_valid():
         session_state.reset()
     
-    # Get credentials from environment variables
     username = os.getenv('ECLASS_USERNAME')
     password = os.getenv('ECLASS_PASSWORD')
     
@@ -208,37 +195,29 @@ async def handle_login(arguments: Dict[str, Any]) -> List[types.TextContent]:
         ]
     
     logger.info(f"Attempting to log in as {username}")
-    
-    # Attempt login using the authentication module
     success, message = authentication.attempt_login(session_state, username, password)
-    
-    # Format and return the response
     return [authentication.format_login_response(success, message, username if success else None)]
+
 
 async def handle_get_courses() -> List[types.TextContent]:
     """Handle getting the list of enrolled courses."""
-    # Use the course_management module to get courses
     success, message, courses = course_management.get_courses(session_state)
-    
-    # Format and return the response
     return [course_management.format_courses_response(success, message, courses)]
+
 
 async def handle_logout() -> List[types.TextContent]:
     """Handle logout from eClass."""
-    # Use the authentication module to perform logout
     success, username_or_error = authentication.perform_logout(session_state)
-    
-    # Format and return the response
     return [authentication.format_logout_response(success, username_or_error)]
+
 
 async def handle_authstatus() -> List[types.TextContent]:
     """Handle checking authentication status."""
-    # Use the authentication module to format the status response
     return [authentication.format_authstatus_response(session_state)]
 
-async def main():
+
+async def main() -> None:
     """Run the MCP server."""
-    # Run the server using stdin/stdout streams
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
         await server.run(
             read_stream,
@@ -252,6 +231,7 @@ async def main():
                 ),
             ),
         )
+
 
 if __name__ == "__main__":
     asyncio.run(main())

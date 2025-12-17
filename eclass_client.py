@@ -1,77 +1,83 @@
 #!/usr/bin/env python3
 """
-eClass Client - Authentication and Basic Functionality
+eClass Client - Standalone client for eClass platform.
 
-This module provides a client for interacting with an eClass platform instance.
-It handles authentication and session management for accessing eClass resources.
-Specifically tailored for UoA's SSO authentication system.
+This module provides a standalone client for interacting with eClass without MCP.
+It demonstrates the server's core functionality in a simple sequential script,
+reusing the authentication and HTML parsing modules from the MCP server.
+
+This client serves as:
+1. A reference implementation showing how eClass authentication works
+2. A simpler alternative for projects that don't require MCP integration
+3. A demonstration of the modular architecture
+
+Usage:
+    python eclass_client.py
 """
 
-import os
-import re
 import logging
-import requests
+import os
+import sys
+from typing import Dict, List
 from urllib.parse import urlparse
-from bs4 import BeautifulSoup
+
+import requests
 from dotenv import load_dotenv
 
-# Configure logging
+# Add src directory to path for module imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+
+from eclass_mcp_server import authentication, html_parsing
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger('eclass_client')
 
+
 class EClassClient:
-    """Client for interacting with an eClass platform instance through UoA's SSO."""
+    """Standalone client for eClass platform using shared modules."""
     
-    def __init__(self, base_url=None):
+    def __init__(self, base_url: str | None = None) -> None:
         """
         Initialize the eClass client.
         
         Args:
-            base_url (str, optional): The base URL of the eClass instance.
-                If not provided, it will be loaded from the environment.
+            base_url: Base URL of the eClass instance. Defaults to env or UoA.
         """
-        # Load environment variables
         load_dotenv()
         
-        # Initialize session and state
         self.session = requests.Session()
         self.logged_in = False
         
-        # Set base URL (default to UoA's eClass instance)
-        self.base_url = base_url or os.getenv('ECLASS_URL', 'https://eclass.uoa.gr')
-        
-        # Remove trailing slash if present
-        self.base_url = self.base_url.rstrip('/')
-        
-        # Extract eclass domain from base_url for redirect checks
+        # Configuration mirrors server.SessionState
+        self.base_url = (base_url or os.getenv('ECLASS_URL', 'https://eclass.uoa.gr')).rstrip('/')
         self.eclass_domain = urlparse(self.base_url).netloc
         
-        # Set SSO domain (default to UoA's SSO)
         self.sso_domain = os.getenv('ECLASS_SSO_DOMAIN', 'sso.uoa.gr')
-        # Make protocol configurable (default to https for production, but allow http for local testing)
         sso_protocol = os.getenv('ECLASS_SSO_PROTOCOL', 'https')
         self.sso_base_url = f"{sso_protocol}://{self.sso_domain}"
         
-        # Set SSO URLs
         self.login_form_url = f"{self.base_url}/main/login_form.php"
+        self.portfolio_url = f"{self.base_url}/main/portfolio.php"
+        self.logout_url = f"{self.base_url}/index.php?logout=yes"
+        
+        self.username: str | None = None
+        self.courses: List[Dict[str, str]] = []
         
         logger.info(f"Initialized eClass client for {self.base_url} (SSO: {self.sso_domain})")
     
-    def login(self, username=None, password=None):
+    def login(self, username: str | None = None, password: str | None = None) -> bool:
         """
-        Log in to eClass using username/password through UoA's SSO.
+        Log in to eClass using SSO authentication.
         
         Args:
-            username (str, optional): eClass username. 
-                If not provided, it will be loaded from the environment.
-            password (str, optional): eClass password.
-                If not provided, it will be loaded from the environment.
-                
+            username: eClass username. Defaults to env.
+            password: eClass password. Defaults to env.
+            
         Returns:
-            bool: True if login was successful, False otherwise.
+            True if login was successful.
         """
         username = username or os.getenv('ECLASS_USERNAME')
         password = password or os.getenv('ECLASS_PASSWORD')
@@ -81,266 +87,84 @@ class EClassClient:
         
         logger.info(f"Attempting to log in as {username}")
         
-        # Step 1: Visit the eClass login form page
-        try:
-            response = self.session.get(self.login_form_url)
-            response.raise_for_status()
-            logger.info("Accessed eClass login form")
-        except requests.RequestException as e:
-            logger.error(f"Failed to access login form: {e}")
-            return False
+        # Use authentication module's login flow
+        success, error = authentication.attempt_login(self, username, password)
         
-        # Step 2: Find the SSO login button and follow it
-        try:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            sso_link = None
-            
-            # Look for the UoA login button (it could be a button or a link)
-            for link in soup.find_all('a'):
-                if 'Είσοδος με λογαριασμό ΕΚΠΑ' in link.text or 'ΕΚΠΑ' in link.text:
-                    sso_link = link.get('href')
-                    break
-            
-            if not sso_link:
-                # Try alternate method to find the SSO link
-                for form in soup.find_all('form'):
-                    if form.get('action') and 'cas.php' in form.get('action'):
-                        sso_link = form.get('action')
-                        break
-            
-            if not sso_link:
-                logger.error("Could not find SSO login link on the login page")
-                return False
-            
-            # Make sure the URL is absolute
-            if not sso_link.startswith(('http://', 'https://')):
-                if sso_link.startswith('/'):
-                    sso_link = f"{self.base_url}{sso_link}"
-                else:
-                    sso_link = f"{self.base_url}/{sso_link}"
-            
-            logger.info(f"Found SSO login link: {sso_link}")
-            
-            # Follow the SSO link
-            response = self.session.get(sso_link)
-            response.raise_for_status()
-            logger.info("Redirected to SSO login page")
-        except requests.RequestException as e:
-            logger.error(f"Failed to access SSO page: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Error parsing login page: {e}")
-            return False
+        if success:
+            logger.info("Login successful")
+            return True
         
-        # Step 3: Extract execution parameter and submit login form to CAS
-        try:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Check if we've been redirected to SSO (allow same domain for local testing)
-            # For local testing, SSO might be on the same domain as eClass
-            response_url_domain = urlparse(response.url).netloc
-            sso_domain_netloc = urlparse(self.sso_base_url).netloc
-            
-            # Allow redirect if:
-            # 1. SSO domain is in the URL (normal production case)
-            # 2. Response domain matches SSO domain (exact match)
-            # 3. eClass and SSO are on the same domain (local testing scenario)
-            is_valid_redirect = (
-                self.sso_domain in response.url or
-                response_url_domain == sso_domain_netloc or
-                (self.eclass_domain == self.sso_domain and 
-                 self.eclass_domain in response.url)
-            )
-            
-            if not is_valid_redirect:
-                logger.error(f"Unexpected redirect to {response.url}")
-                return False
-            
-            # Find execution value
-            execution_input = soup.find('input', {'name': 'execution'})
-            if not execution_input:
-                logger.error("Could not find execution parameter on SSO page")
-                return False
-            
-            execution = execution_input.get('value')
-            
-            # Find login form action
-            form = soup.find('form', {'id': 'fm1'}) or soup.find('form')
-            if not form:
-                logger.error("Could not find login form on SSO page")
-                return False
-            
-            action = form.get('action')
-            if not action:
-                # Use the current URL as fallback
-                action = response.url
-            elif not action.startswith(('http://', 'https://')):
-                # Make the action URL absolute
-                if action.startswith('/'):
-                    action = f"{self.sso_base_url}{action}"
-                else:
-                    action = f"{self.sso_base_url}/{action}"
-            
-            # Prepare login data
-            login_data = {
-                'username': username,
-                'password': password,
-                'execution': execution,
-                '_eventId': 'submit',
-                'geolocation': ''
-            }
-            
-            # Submit login form
-            response = self.session.post(action, data=login_data)
-            response.raise_for_status()
-            
-            # Check for authentication errors
-            if 'Πόροι Πληροφορικής ΕΚΠΑ' not in response.text and 'The credentials you provided cannot be determined to be authentic' not in response.text:
-                logger.info("Successfully authenticated with SSO")
-            else:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                error_msg = soup.find('div', {'id': 'msg'})
-                if error_msg:
-                    logger.error(f"SSO login error: {error_msg.text.strip()}")
-                else:
-                    logger.error("SSO login failed without specific error message")
-                return False
-            
-        except requests.RequestException as e:
-            logger.error(f"Failed during SSO authentication: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Error during SSO authentication: {e}")
-            return False
-        
-        # Step 4: Check if we've been redirected to eClass and verify login success
-        try:
-            # We should now be redirected back to eClass
-            if self.eclass_domain in response.url:
-                # Try to access portfolio page to verify login
-                portfolio_url = f"{self.base_url}/main/portfolio.php"
-                response = self.session.get(portfolio_url)
-                response.raise_for_status()
-                
-                # Check if we can access the portfolio page
-                if 'Μαθήματα' in response.text or 'portfolio' in response.text.lower() or 'course' in response.text.lower():
-                    self.logged_in = True
-                    logger.info("Login successful, redirected to eClass portfolio")
-                    return True
-                else:
-                    logger.error("Could not access portfolio page after login")
-                    return False
-            else:
-                logger.error(f"Unexpected redirect after login: {response.url}")
-                return False
-        except requests.RequestException as e:
-            logger.error(f"Failed to verify login: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Error verifying login: {e}")
-            return False
+        logger.error(f"Login failed: {error}")
+        return False
     
-    def get_courses(self):
+    def get_courses(self) -> List[Dict[str, str]]:
         """
         Get list of enrolled courses.
         
         Returns:
-            list: A list of dictionaries containing course information.
+            List of course dicts with 'name' and 'url' keys.
         """
         if not self.logged_in:
             logger.error("Not logged in")
             return []
         
-        courses_url = f"{self.base_url}/main/portfolio.php"
         try:
-            response = self.session.get(courses_url)
+            response = self.session.get(self.portfolio_url)
             response.raise_for_status()
         except requests.RequestException as e:
             logger.error(f"Failed to fetch courses: {e}")
             return []
         
-        courses = []
-        try:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Try different CSS selectors that might contain course information
-            course_elements = (
-                soup.select('.course-title') or
-                soup.select('.lesson-title') or
-                soup.select('.course-box .title') or
-                soup.select('.course-info h4')
-            )
-            
-            if not course_elements:
-                # Try to find course links using a more general approach
-                for link in soup.find_all('a'):
-                    href = link.get('href', '')
-                    if 'courses' in href or 'course.php' in href:
-                        course_name = link.text.strip()
-                        if course_name:  # Only include if there's a name
-                            courses.append({
-                                'name': course_name,
-                                'url': href if href.startswith('http') else f"{self.base_url}/{href.lstrip('/')}"
-                            })
-            else:
-                for course_elem in course_elements:
-                    course_link = course_elem.find('a') or course_elem
-                    if course_link and course_link.get('href'):
-                        course_name = course_link.text.strip()
-                        course_url = course_link.get('href')
-                        courses.append({
-                            'name': course_name,
-                            'url': course_url if course_url.startswith('http') else f"{self.base_url}/{course_url.lstrip('/')}"
-                        })
-        
-        except Exception as e:
-            logger.error(f"Failed to parse courses: {e}")
-        
-        logger.info(f"Found {len(courses)} courses")
-        return courses
+        # Use html_parsing module
+        self.courses = html_parsing.extract_courses(response.text, self.base_url)
+        logger.info(f"Found {len(self.courses)} courses")
+        return self.courses
     
-    def logout(self):
+    def logout(self) -> bool:
         """
         Log out from eClass.
         
         Returns:
-            bool: True if logout was successful, False otherwise.
+            True if logout was successful.
         """
         if not self.logged_in:
             logger.warning("Not logged in, nothing to do")
             return True
         
-        logout_url = f"{self.base_url}/index.php?logout=yes"
         try:
-            response = self.session.get(logout_url)
+            response = self.session.get(self.logout_url)
             response.raise_for_status()
-            self.logged_in = False
+            self.reset()
             logger.info("Logged out successfully")
             return True
         except requests.RequestException as e:
             logger.error(f"Logout failed: {e}")
             return False
+    
+    def reset(self) -> None:
+        """Reset the client state."""
+        self.session = requests.Session()
+        self.logged_in = False
+        self.username = None
+        self.courses = []
 
 
-def main():
-    """Main function to demonstrate eClass client usage."""
+def main() -> None:
+    """Demonstrate eClass client usage."""
     try:
-        # Create client instance
         client = EClassClient()
         
-        # Attempt to login
         if client.login():
             print("Login successful!")
             
-            # Get courses
             courses = client.get_courses()
-            print(f"Found {len(courses)} courses:")
+            print(f"\nFound {len(courses)} courses:")
             for i, course in enumerate(courses, 1):
                 print(f"{i}. {course['name']}")
                 print(f"   URL: {course['url']}")
             
-            # Logout
             client.logout()
+            print("\nLogged out.")
         else:
             print("Login failed. Please check your credentials.")
     
@@ -350,4 +174,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

@@ -1,38 +1,27 @@
 # Tools Reference
 
-<p align="center">
-    <strong>Comprehensive reference for all tools provided by the eClass MCP Server</strong>
-</p>
+Detailed documentation for all tools provided by the eClass MCP Server.
 
-<p align="center">
-    <img src="../../assets/guy-not-to-worry-about.png" alt="Meme">
-</p>
+## Overview
 
-This document provides detailed information about each tool exposed by the eClass MCP Server, including their purpose, parameters, response formats, and example usage.
-
-## Tool Overview
-
-The eClass MCP Server provides the following tools:
-
-| Tool Name    | Description                                       | Authentication Required |
-|--------------|---------------------------------------------------|-------------------------|
-| login        | Authenticate with eClass through UoA's SSO system | No (obv)                |
-| get_courses  | Retrieve a list of enrolled courses               | Yes                     |
-| logout       | Log out from eClass                               | No (obv)                |
-| authstatus   | Check current authentication status               | No                      |
+| Tool | Description | Requires Auth |
+|------|-------------|---------------|
+| `login` | Authenticate via UoA SSO | No |
+| `get_courses` | Retrieve enrolled courses | Yes |
+| `logout` | End current session | No |
+| `authstatus` | Check authentication status | No |
 
 ## login
 
-The login tool authenticates with the eClass platform using credentials stored in the `.env` file.
+Authenticates with eClass using credentials from the `.env` file.
 
-### Description
+### Authentication Flow
 
-This tool initiates a multi-step authentication process:
-1. Visit the eClass login page
-2. Follow the SSO authentication link
+1. Visit eClass login page
+2. Follow SSO authentication link
 3. Authenticate with UoA's CAS system
 4. Verify successful authentication
-5. Establish a session for subsequent requests
+5. Establish session for subsequent requests
 
 ### Input Schema
 
@@ -49,11 +38,11 @@ This tool initiates a multi-step authentication process:
 }
 ```
 
-Note: The `random_string` parameter is a dummy parameter since the MCP protocol requires parameters. The actual username and password must be configured in the `.env` file. This ensures that no data leak of private information is possible when using the eClass MCP server.
+> **Note**: The `random_string` parameter is required by the MCP protocol. Actual credentials are read from `.env`.
 
-### Response Format
+### Responses
 
-Successful login:
+**Success:**
 ```json
 {
   "type": "text",
@@ -61,7 +50,15 @@ Successful login:
 }
 ```
 
-Failed login:
+**Already logged in:**
+```json
+{
+  "type": "text",
+  "text": "Already logged in as username"
+}
+```
+
+**Error:**
 ```json
 {
   "type": "text",
@@ -69,39 +66,17 @@ Failed login:
 }
 ```
 
-Potential error messages:
-- "Username and password must be provided in the .env file"
-- "Could not find SSO login link on the login page"
-- "Authentication error: Invalid credentials"
-- "Network error during login process"
+Possible errors:
+- `"Username and password must be provided in the .env file"`
+- `"Could not find SSO login link on the login page"`
+- `"Authentication failed: Invalid credentials"`
+- `"Network error during login process: [details]"`
 
-### Example Usage
-
-```python
-# Using the MCP client
-login_result = await session.call_tool("login", {
-    "random_string": "any_value"
-})
-print(login_result)
-```
-
-### Notes
-
-- The tool automatically detects if you're already logged in and will return an appropriate message
-- If the session has expired, it will automatically attempt to re-authenticate
-- All authentication credentials must be stored in the `.env` file, not passed as parameters
+---
 
 ## get_courses
 
-The get_courses tool retrieves a list of courses the user is enrolled in from eClass.
-
-### Description
-
-This tool:
-1. Verifies that the user is authenticated
-2. Fetches the portfolio page from eClass
-3. Extracts course information from the HTML
-4. Returns a formatted list of courses
+Retrieves the list of enrolled courses from eClass.
 
 ### Input Schema
 
@@ -118,17 +93,25 @@ This tool:
 }
 ```
 
-### Response Format
+### Responses
 
-Successful course retrieval:
+**Success:**
 ```json
 {
   "type": "text",
-  "text": "Found X courses:\n\n1. Course Name 1\n   URL: https://eclass.uoa.gr/courses/COURSE123/\n2. Course Name 2\n   URL: https://eclass.uoa.gr/courses/COURSE456/\n..."
+  "text": "Found X courses:\n\n1. Course Name\n   URL: https://eclass.uoa.gr/courses/ABC123/\n..."
 }
 ```
 
-Failed course retrieval:
+**No courses:**
+```json
+{
+  "type": "text",
+  "text": "No courses found. You may not be enrolled in any courses."
+}
+```
+
+**Error:**
 ```json
 {
   "type": "text",
@@ -136,38 +119,16 @@ Failed course retrieval:
 }
 ```
 
-Potential error messages:
-- "Not logged in. Please log in first using the login tool."
-- "Session expired. Please log in again."
-- "Network error retrieving courses"
-- "No courses found. You may not be enrolled in any courses."
+Possible errors:
+- `"Not logged in. Please log in first using the login tool."`
+- `"Session expired. Please log in again."`
+- `"Network error retrieving courses: [details]"`
 
-### Example Usage
-
-```python
-# Using the MCP client
-courses_result = await session.call_tool("get_courses", {
-    "random_string": "any_value"
-})
-print(courses_result)
-```
-
-### Notes
-
-- This tool requires prior authentication using the login tool
-- Course information includes only names, not detailed information
-- The tool automatically handles session validation
+---
 
 ## logout
 
-The logout tool ends the current eClass session.
-
-### Description
-
-This tool:
-1. Checks if there's an active session
-2. Sends a logout request to eClass
-3. Clears the session state
+Ends the current eClass session.
 
 ### Input Schema
 
@@ -184,9 +145,9 @@ This tool:
 }
 ```
 
-### Response Format
+### Responses
 
-Successful logout:
+**Success:**
 ```json
 {
   "type": "text",
@@ -194,7 +155,7 @@ Successful logout:
 }
 ```
 
-Not logged in:
+**Not logged in:**
 ```json
 {
   "type": "text",
@@ -202,7 +163,7 @@ Not logged in:
 }
 ```
 
-Failed logout:
+**Error:**
 ```json
 {
   "type": "text",
@@ -210,31 +171,11 @@ Failed logout:
 }
 ```
 
-### Example Usage
-
-```python
-# Using the MCP client
-logout_result = await session.call_tool("logout", {
-    "random_string": "any_value"
-})
-print(logout_result)
-```
-
-### Notes
-
-- This tool can be called even if not logged in (it will respond appropriately)
-- After logout, you'll need to use the login tool again to access authenticated resources
+---
 
 ## authstatus
 
-The authstatus tool checks the current authentication status with eClass.
-
-### Description
-
-This tool:
-1. Checks if there's an active session
-2. Verifies if the session is still valid
-3. Reports the authentication status
+Checks the current authentication status.
 
 ### Input Schema
 
@@ -251,17 +192,9 @@ This tool:
 }
 ```
 
-### Response Format
+### Responses
 
-Not logged in:
-```json
-{
-  "type": "text",
-  "text": "Status: Not logged in"
-}
-```
-
-Logged in:
+**Logged in:**
 ```json
 {
   "type": "text",
@@ -269,7 +202,15 @@ Logged in:
 }
 ```
 
-Session expired:
+**Not logged in:**
+```json
+{
+  "type": "text",
+  "text": "Status: Not logged in"
+}
+```
+
+**Session expired:**
 ```json
 {
   "type": "text",
@@ -277,41 +218,14 @@ Session expired:
 }
 ```
 
-### Example Usage
-
-```python
-# Using the MCP client
-status_result = await session.call_tool("authstatus", {
-    "random_string": "any_value"
-})
-print(status_result)
-```
-
-### Notes
-
-- This tool is useful for checking if you need to log in before accessing authenticated resources
-- It validates the current session without attempting to refresh it
-- The response includes the number of courses if logged in
-
-## Tool Error Handling
-
-All tools follow consistent error handling patterns:
-
-1. **Precondition Checking**: Tools verify necessary preconditions (e.g., authentication status)
-2. **Specific Error Messages**: Each error scenario produces a descriptive error message
-3. **Proper MCP Formatting**: All errors are formatted as proper MCP text responses
-4. **Network Error Handling**: Network issues are caught and reported with descriptive messages
+---
 
 ## Common Error Patterns
 
-| Error Pattern                | Description                                      | Recommended Action                |
-|------------------------------|--------------------------------------------------|-----------------------------------|
-| Not logged in                | The requested operation requires authentication  | Call the login tool first         |
-| Session expired              | The authentication session has expired           | Call the login tool to refresh    |
-| Network error                | Connection to eClass failed                      | Check network and try again       |
-| Missing credentials          | Username/password not found in .env file         | Configure the .env file properly  |
-| Authentication error         | Invalid credentials or authentication failed     | Check credentials in .env file    |
-
-## Back to Documentation Index
-
-For details on how the server is implemented, see the [How It Works](./how-it-works.md) document. For information about MCP SDK integration, see the [MCP SDK Integration](./mcp-sdk-integration.md) document. For any other questions ask ChatGPT.
+| Error | Description | Resolution |
+|-------|-------------|------------|
+| Not logged in | Operation requires authentication | Call `login` first |
+| Session expired | Session has timed out | Call `login` to refresh |
+| Network error | Connection to eClass failed | Check network, retry |
+| Missing credentials | `.env` file incomplete | Set `ECLASS_USERNAME` and `ECLASS_PASSWORD` |
+| Authentication error | Invalid credentials | Verify credentials in `.env` |
