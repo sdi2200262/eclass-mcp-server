@@ -198,7 +198,7 @@ Checks the current authentication status.
 ```json
 {
   "type": "text",
-  "text": "Status: Logged in as username\nCourses: X enrolled"
+  "text": "Status: Logged in as username"
 }
 ```
 

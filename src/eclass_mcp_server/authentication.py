@@ -188,7 +188,7 @@ def format_authstatus_response(session_state: SessionState) -> types.TextContent
     if session_state.is_session_valid():
         return types.TextContent(
             type="text",
-            text=f"Status: Logged in as {session_state.username}\nCourses: {len(session_state.courses)} enrolled",
+            text=f"Status: Logged in as {session_state.username}",
         )
     
     return types.TextContent(
