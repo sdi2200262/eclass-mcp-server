@@ -123,8 +123,7 @@ eclass-mcp-server/
 │   ├── server.py               # MCP server and tool handlers
 │   ├── authentication.py       # SSO authentication
 │   ├── course_management.py    # Course operations
-│   ├── html_parsing.py         # HTML parsing utilities
-│   └── test/                   # Test scripts
+│   └── html_parsing.py         # HTML parsing utilities
 └── docs/                       # Documentation
 ```
 
